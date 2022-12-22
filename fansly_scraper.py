@@ -103,25 +103,25 @@ def open_file(myfile):
 
 
 tot_downs=0
-try:
-    api_req=requests.get('https://api.github.com/repos/avnsx/fansly/releases', headers={'user-agent': f'Fansly Scraper {curent_ver}','referer':f'Fansly Scraper {curent_ver}', 'accept-language': 'en-US,en;q=0.9','accept-language': 'en-US,en;q=0.9',}).json()
-    for x in api_req:tot_downs+=x['assets'][0]['download_count']
-    if api_req[0]['tag_name'].lstrip('v') > curent_ver:
-        output(3,' WARNING','<yellow>', f'Your version (v{curent_ver}) of fansly scraper is outdated; starting updater ...')
-        s(3)
-        open_file('updater.exe')
-        s(10)
-        exit()
-except requests.exceptions.ConnectionError as e:
-    output(2,'\n [11]ERROR','<red>', 'Update check failed, due to no internet connection!')
-    print('\n'+str(e))
-    input('\nPress any key to close ...')
-    exit()
-except Exception as e:
-    output(2,'\n [12]ERROR','<red>', 'Update check failed, will try to continue ...')
-    print('\n'+str(e))
-    s(3)
-    pass
+#try:
+#    api_req=requests.get('https://api.github.com/repos/avnsx/fansly/releases', headers={'user-agent': f'Fansly Scraper {curent_ver}','referer':f'Fansly Scraper {curent_ver}', 'accept-language': 'en-US,en;q=0.9','accept-language': 'en-US,en;q=0.9',}).json()
+#    for x in api_req:tot_downs+=x['assets'][0]['download_count']
+#    if api_req[0]['tag_name'].lstrip('v') > curent_ver:
+#        output(3,' WARNING','<yellow>', f'Your version (v{curent_ver}) of fansly scraper is outdated; starting updater ...')
+#        s(3)
+#        open_file('updater.exe')
+#        s(10)
+#        exit()
+#except requests.exceptions.ConnectionError as e:
+#    output(2,'\n [11]ERROR','<red>', 'Update check failed, due to no internet connection!')
+#    print('\n'+str(e))
+#    input('\nPress any key to close ...')
+#    exit()
+#except Exception as e:
+#    output(2,'\n [12]ERROR','<red>', 'Update check failed, will try to continue ...')
+#    print('\n'+str(e))
+#    s(3)
+#    pass
 
 F, c ='fNs', mytoken
 if c[-3:]==F:
@@ -174,9 +174,9 @@ output(1,' Info','<light-blue>', f'Downloading files marked as preview, is set t
 if previews == 'True':output(3,' WARNING','<yellow>', 'Previews downloading is enabled; repetitive and/or emoji spammed media might be downloaded!')
 if remember == 'True':output(3,' WARNING','<yellow>', 'Update recent download is enabled')
 
-if randint(1,100) <= 19:
-    output(4,'\n lnfo','<light-red>', f"Fansly scraper was downloaded {tot_downs} times, but only {round(requests.get('https://api.github.com/repos/avnsx/fansly', headers={'User-Agent':'Fansly Scraper'}).json()['stargazers_count']/tot_downs*100, 2)} % of You(!) have starred it.\n{17*' '}Stars directly influence my willingness to continue maintaining the project.\n{17*' '}Help the repository grow today, by leaving a star on it and sharing it to others online!")
-    s(15)
+#if randint(1,100) <= 19:
+#    output(4,'\n lnfo','<light-red>', f"Fansly scraper was downloaded {tot_downs} times, but only {round(requests.get('https://api.github.com/repos/avnsx/fansly', headers={'User-Agent':'Fansly Scraper'}).json()['stargazers_count']/tot_downs*100, 2)} % of You(!) have starred it.\n{17*' '}Stars directly influence my willingness to continue maintaining the project.\n{17*' '}Help the repository grow today, by leaving a star on it and sharing it to others online!")
+#    s(15)
 
 recent_photobyte_hashes, recent_videobyte_hashes = [], []
 
@@ -193,7 +193,7 @@ def ask_correct_dir():
         s(15)
         exit() # this has to force exit
 
-if base_directory == 'Local_directory': # if user didn't specify custom downloads path 
+if base_directory == 'Local_directory': # if user didn't specify custom downloads path
     BASE_DIR_NAME = mycreator+'_fansly' # use local directory
 elif os.path.isdir(base_directory): # if user specified a correct custom downloads path
     BASE_DIR_NAME = os.path.join(base_directory, mycreator+'_fansly') # use their custom path & specify new folder for the current creator in it
@@ -309,7 +309,8 @@ def sort_download(filename,filebytes, directoryName):
                 else:
                     prefix = f"{pic_count}-{randints}_"
                 if show == 'True':output(1,' Info','<light-blue>', f"Downloading Image '{win_comp_name}'")
-                with open(f"{directoryName}/Pictures/{prefix}{win_comp_name}", 'wb') as f:f.write(filebytes)
+                file_path = f"{directoryName}/Pictures/{prefix}{win_comp_name}"
+                with open(file_path, 'wb') as f:f.write(filebytes)
                 photobyte_hashes.append(photohash)
                 pic_count+=1
             else:duplicates+=1
@@ -414,7 +415,7 @@ while True:
         preview_directory_name = directory_name
     if cursor == 0:output(1,' Info','<light-blue>', f'Inspecting most recent page')
     else:output(1,' Info','<light-blue>', f'Inspecting page: {cursor}')
-    
+
     # simple attempt to deal with rate limiting
     while True:
         try:
@@ -470,20 +471,20 @@ while True:
         output(2,'\n [20]ERROR','<red>', "Couldn't find any scrapeable media at all!\n This most likely happend because you're not following the creator, your authorisation token is wrong\n or the creator is not providing unlocked content.")
         input('\nPress any key to close ...')
         exit()
-    if remember == 'True' and recent > int(total_photos+total_videos) * 0.2:
-        print(f"\n╔═\n  Finished download; it looks like we've had already or have just downloaded all possible new content.\n\t\t  ✶ Please leave a Star on the GitHub Repository, if you are satisfied! ✶{10*' '}═╝")
-        s(120)
-        exit()
+#    if remember == 'True' and recent > int(total_photos+total_videos) * 0.2:
+#        print(f"\n╔═\n  Finished download; it looks like we've had already or have just downloaded all possible new content.\n\t\t  ✶ Please leave a Star on the GitHub Repository, if you are satisfied! ✶{10*' '}═╝")
+#        s(120)
+#        exit()
 
 print('')
 issue=False
-if pic_count-1 <= total_photos * 0.2 and remember == 'False':
-    output(3,' WARNING','<yellow>', 'Low amount of content scraped. Creators total Pictures: '+str(total_photos)+', downloaded Pictures: '+str(pic_count-1))
-    issue = True
+#if pic_count-1 <= total_photos * 0.2 and remember == 'False':
+output(1,' INFO','<light-blue>', 'Creators total Pictures: '+str(total_photos)+', downloaded Pictures: '+str(pic_count-1))
+    #issue = True
 
-if vid_count-1 <= total_videos * 0.2 and remember == 'False':
-    output(3,' WARNING','<yellow>', 'Low amount of content scraped. Creators total Videos: '+str(total_videos)+', downloaded Videos: '+str(vid_count-1))
-    issue = True
+#if vid_count-1 <= total_videos * 0.2 and remember == 'False':
+output(1,' INFO','<light-blue>','Creators total Videos: '+str(total_videos)+', downloaded Videos: '+str(vid_count-1))
+#    issue = True
 
 if issue == True:
     if following == False:print(f'{20*" "}Follow the creator; to be able to scrape more media!')
