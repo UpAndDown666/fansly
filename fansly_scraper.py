@@ -8,6 +8,7 @@ from PIL import Image
 from time import sleep as s
 from configparser import RawConfigParser
 from datetime import datetime
+from pathlib import Path
 os.system('title Fansly Scraper')
 sess = requests.Session()
 
@@ -213,6 +214,9 @@ PREVIEWS_DIR_NAME = 'Previews'
 PICTURES_DIR_NAME = 'Pictures'
 VIDEOS_DIR_NAME = 'Videos'
 
+creator_config_path = Path(BASE_DIR_NAME, 'creator.ini')
+recent_post_id = 0
+
 def process_img(filePath):
     recent_photobyte_hashes.append(str(imagehash.average_hash(Image.open(filePath))))
 
@@ -238,22 +242,34 @@ if remember == 'True':
         output(3,' WARNING','<yellow>', f"'{BASE_DIR_NAME}' folder is not located in the specified directory; but you launched in update recent download mode,\n{20*' '}so find & select the folder that contains recently downloaded 'Messages' & 'Timeline' as subfolders (it should be called '{BASE_DIR_NAME}')")
         ask_correct_dir()
 
+    creator_config_path = Path(BASE_DIR_NAME, 'creator.ini')
+
+    if creator_config_path.exists and creator_config_path.is_file:
+        creator_config = RawConfigParser()
+        if len(creator_config.read(creator_config_path)) != 1:
+            output(3,' WARNING','<yellow>', f'No config file for {mycreator}, will be created after finished download')
+        else:
+            try:
+                # I'm aware that I could've used config.getint(), getfloat, getboolean etc.
+                recent_post_id = creator_config['Info']['MostRecentPost']
+            except (KeyError, NameError) as e:
+                output(3,' WARNING','<yellow>', 'No most recent post id found in creator config, will be created after finished download')
     list_of_futures=[]
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        for x in '', TIMELINE_DIR_NAME, MESSAGES_DIR_NAME, PREVIEWS_DIR_NAME, os.path.join(TIMELINE_DIR_NAME, PREVIEWS_DIR_NAME), os.path.join(MESSAGES_DIR_NAME, PREVIEWS_DIR_NAME):
-            x_path = os.path.join(BASE_DIR_NAME, x)
-            if os.path.isdir(x_path):
-                p_path = os.path.join(x_path, PICTURES_DIR_NAME)
-                v_path = os.path.join(x_path, VIDEOS_DIR_NAME)
-                if os.path.isdir(p_path):
+        for x in '', TIMELINE_DIR_NAME, MESSAGES_DIR_NAME, PREVIEWS_DIR_NAME, Path(TIMELINE_DIR_NAME, PREVIEWS_DIR_NAME), Path(MESSAGES_DIR_NAME, PREVIEWS_DIR_NAME):
+            x_path = Path(BASE_DIR_NAME, x)
+            if x_path.is_dir():
+                p_path = Path(x_path, PICTURES_DIR_NAME)
+                v_path = Path(x_path, VIDEOS_DIR_NAME)
+                if p_path.is_dir():
                     output(1,' Info','<light-blue>', f"Hashing {mycreator}'s recently downloaded pictures from {p_path} ...")
-                    for el in os.listdir(p_path):
-                        list_of_futures.append(executor.submit(process_img, f'{p_path}/{el}'))
+                    for el in p_path.iterdir():
+                        list_of_futures.append(executor.submit(process_img, el))
                         
-                if os.path.isdir(v_path):
+                if v_path.is_dir():
                     output(1,' Info','<light-blue>', f"Hashing {mycreator}'s recently downloaded videos from {v_path} ...")
-                    for el in os.listdir(v_path):
-                        list_of_futures.append(executor.submit(process_vid, f'{v_path}/{el}'))
+                    for el in v_path.iterdir():
+                        list_of_futures.append(executor.submit(process_vid, el))
 
     concurrent.futures.wait(list_of_futures)
 
@@ -336,8 +352,12 @@ def sort_download(filename,filebytes, directoryName):
 group_id = None
 groups = sess.get('https://apiv3.fansly.com/api/v1/group', headers=headers).json()['response']['groups']
 for x in range(len(groups)):
-    if groups[x]['users'][0]['userId'] == creator_id:
-        group_id = groups[x]['id']
+    users = groups[x]['users']
+    for y in range(len(users)):
+        if users[y]['userId'] == creator_id:
+            group_id = groups[x]['id']
+            break
+    if group_id:
         break
 
 if group_id:
@@ -402,6 +422,16 @@ if group_id:
             pass
 else:output(1,' Info','<light-blue>','No scrapeable media found in messages')
 
+output(1,' INFO','<light-blue>', f'Downloaded Pictures from messages: {str(pic_count-1)}')
+    #issue = True
+
+#if vid_count-1 <= total_videos * 0.2 and remember == 'False':
+output(1,' INFO','<light-blue>', f'Downloaded Videos from messages: {str(vid_count-1)}')
+output(1, ' INFO', '<light-blue>', f'{duplicates} duplicates declined in messages')
+
+#exit()
+pic_count, vid_count, duplicates = 1, 1, 0
+first_post_id = None
 output(1,' Info','<light-blue>','Started profile media download; this could take a while dependant on the content size ...')
 cursor = 0
 while True:
@@ -420,15 +450,21 @@ while True:
     while True:
         try:
             # people with a high enough internet download speed & hardware specification will manage to hit a rate limit here
-            response = sess.get(f'https://apiv3.fansly.com/api/v1/timeline/{creator_id}?before={cursor}&after=0', headers=headers) # outdated; they're serving over 'timeline/home/' ... '&mode=0' now
+            response = sess.get(f'https://apiv3.fansly.com/api/v1/timeline/{creator_id}?before={cursor}&after={recent_post_id}', headers=headers) # outdated; they're serving over 'timeline/home/' ... '&mode=0' now
             break # break if no errors happened, so we can just continue trying with next download
         except:
             output(2,' WARNING','<yellow>', f"Uhm, looks like we've hit a rate limit ..\n{20*' '}Will try to continue the download, infinitely every 15 seconds\n{20*' '}Let me know if this logic worked out at any point in time\n{20*' '}by opening a issue ticket please!")
             print('\n'+traceback.format_exc())
             s(5)
             pass
-
     try:
+        try:
+            if not first_post_id:
+                first_post_id = response.json()['response']['posts'][0]['id']
+        except IndexError: 
+            output(1,' INFO','<light-blue>', f'No posts newer than last download')
+            break
+            
         for x in response.json()['response']['accountMedia']:
             # set filename
             if naming == 'Date_posted':
@@ -477,6 +513,16 @@ while True:
 #        exit()
 
 print('')
+if first_post_id:
+    creator_config = RawConfigParser()
+    creator_config['Info'] = {
+        'MostRecentPost': first_post_id
+    }
+    with open(creator_config_path, 'w') as configfile:
+        creator_config.write(configfile) 
+        output(1,' INFO','<light-blue>', f'Updated creator config in: {creator_config_path}')
+        
+
 issue=False
 #if pic_count-1 <= total_photos * 0.2 and remember == 'False':
 output(1,' INFO','<light-blue>', 'Creators total Pictures: '+str(total_photos)+', downloaded Pictures: '+str(pic_count-1))
@@ -495,6 +541,6 @@ if issue == True:
 full_path = os.path.join(os.getcwd(), BASE_DIR_NAME)
 if openwhenfinished == 'True':open_file(full_path)
 
-print('╔═\n  Done! Downloaded '+str(pic_count-1)+' pictures & '+str(vid_count-1)+' videos ('+str(duplicates)+' duplicates declined)\n  Saved in directory: "'+full_path+'"\n  ✶ Please leave a Star on the GitHub Repository, if you are satisfied! ✶'+f'{12*" "}'+'═╝')
+print('╔═\n  Done! Downloaded '+str(pic_count-1)+' pictures & '+str(vid_count-1)+' videos ('+str(duplicates)+' duplicates)\n  Saved in directory: "'+full_path+'"\n  ✶ Please leave a Star on the GitHub Repository, if you are satisfied! ✶'+f'{12*" "}'+'═╝')
 
 input()
