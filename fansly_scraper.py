@@ -214,8 +214,13 @@ PREVIEWS_DIR_NAME = 'Previews'
 PICTURES_DIR_NAME = 'Pictures'
 VIDEOS_DIR_NAME = 'Videos'
 
+RECENT_POST_CONFIG_NAME = 'most_recent_post'
+RECENT_MESSAGE_CONFIG_NAME = 'most_recent_message'
+
 creator_config_path = Path(BASE_DIR_NAME, 'creator.ini')
 recent_post_id = 0
+recent_message_id = 0
+creator_config = None
 
 def process_img(filePath):
     recent_photobyte_hashes.append(str(imagehash.average_hash(Image.open(filePath))))
@@ -249,11 +254,16 @@ if remember == 'True':
         if len(creator_config.read(creator_config_path)) != 1:
             output(3,' WARNING','<yellow>', f'No config file for {mycreator}, will be created after finished download')
         else:
-            try:
-                # I'm aware that I could've used config.getint(), getfloat, getboolean etc.
-                recent_post_id = creator_config['Info']['MostRecentPost']
-            except (KeyError, NameError) as e:
-                output(3,' WARNING','<yellow>', 'No most recent post id found in creator config, will be created after finished download')
+            recent_post_id = creator_config.get('Info', RECENT_POST_CONFIG_NAME, fallback=0)
+            if not recent_post_id:
+                output(3, ' WARNING', '<yellow>',
+                       'No most recent post id found in creator config, will be created after finished download')
+
+            recent_message_id = creator_config.get('Info', RECENT_MESSAGE_CONFIG_NAME, fallback=0)
+            if not recent_message_id:
+                output(3, ' WARNING', '<yellow>',
+                       'No most recent message id found in creator config, will be created after finished download')
+
     list_of_futures=[]
     with concurrent.futures.ThreadPoolExecutor() as executor:
         for x in '', TIMELINE_DIR_NAME, MESSAGES_DIR_NAME, PREVIEWS_DIR_NAME, Path(TIMELINE_DIR_NAME, PREVIEWS_DIR_NAME), Path(MESSAGES_DIR_NAME, PREVIEWS_DIR_NAME):
@@ -359,7 +369,7 @@ for x in range(len(groups)):
             break
     if group_id:
         break
-
+first_message_id = None
 if group_id:
     output(1,' Info','<light-blue>','Started messages media download ...')
     msg_cursor = None
@@ -374,11 +384,18 @@ if group_id:
             preview_directory_name = directory_name
         if not msg_cursor:
             output(1,' Info','<light-blue>', f'Inspecting message: {group_id}')
-            resp = sess.get('https://apiv3.fansly.com/api/v1/message', headers=headers, params=(('groupId', group_id),('limit', '50'),)).json()
+            resp = sess.get('https://apiv3.fansly.com/api/v1/message', headers=headers, params=(('groupId', group_id),('limit', '50'), ('after', recent_message_id), )).json()
         else:
             output(1,' Info','<light-blue>', f'Inspecting message: {msg_cursor}')
-            resp = sess.get('https://apiv3.fansly.com/api/v1/message', headers=headers, params=(('groupId', group_id),('before', msg_cursor),('limit', '50'),)).json()
+            resp = sess.get('https://apiv3.fansly.com/api/v1/message', headers=headers, params=(('groupId', group_id),('before', msg_cursor),('limit', '50'), ('after', recent_message_id),)).json()
         try:
+            try:
+                if not first_message_id:
+                    first_message_id = resp['response']['messages'][0]['id']
+            except IndexError:
+                output(1, ' INFO', '<light-blue>', f'No messages newer than last download')
+                break
+
             for x in resp['response']['accountMedia']:
                 # set filename
                 if naming == 'Date_posted':
@@ -428,6 +445,17 @@ output(1,' INFO','<light-blue>', f'Downloaded Pictures from messages: {str(pic_c
 #if vid_count-1 <= total_videos * 0.2 and remember == 'False':
 output(1,' INFO','<light-blue>', f'Downloaded Videos from messages: {str(vid_count-1)}')
 output(1, ' INFO', '<light-blue>', f'{duplicates} duplicates declined in messages')
+
+if first_message_id:
+    if not creator_config:
+        creator_config = RawConfigParser()
+    if not creator_config.has_section('Info'):
+        creator_config.add_section('Info')
+    creator_config['Info'][RECENT_MESSAGE_CONFIG_NAME] = first_message_id
+
+    with open(creator_config_path, 'w') as configfile:
+        creator_config.write(configfile)
+        output(1,' INFO','<light-blue>', f'Updated creator config with message id in: {creator_config_path}')
 
 #exit()
 pic_count, vid_count, duplicates = 1, 1, 0
@@ -514,13 +542,14 @@ while True:
 
 print('')
 if first_post_id:
-    creator_config = RawConfigParser()
-    creator_config['Info'] = {
-        'MostRecentPost': first_post_id
-    }
+    if not creator_config:
+        creator_config = RawConfigParser()
+    if not creator_config.has_section('Info'):
+        creator_config.add_section('Info')
+    creator_config['Info'][RECENT_POST_CONFIG_NAME] = first_post_id
     with open(creator_config_path, 'w') as configfile:
         creator_config.write(configfile) 
-        output(1,' INFO','<light-blue>', f'Updated creator config in: {creator_config_path}')
+        output(1, ' INFO', '<light-blue>', f'Updated creator config with postg id in: {creator_config_path}')
         
 
 issue=False
