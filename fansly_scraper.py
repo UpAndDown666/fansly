@@ -388,6 +388,10 @@ if group_id:
         else:
             output(1,' Info','<light-blue>', f'Inspecting message: {msg_cursor}')
             resp = sess.get('https://apiv3.fansly.com/api/v1/message', headers=headers, params=(('groupId', group_id),('before', msg_cursor),('limit', '50'), ('after', recent_message_id),)).json()
+
+        if not resp['success']:
+            output(3, ' WARNING', '<yellow>', f'Failed to get message with error: {resp["error"]}')
+            break
         try:
             try:
                 if not first_message_id:
