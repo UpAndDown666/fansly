@@ -410,7 +410,6 @@ if group_id:
                     file_name = f"{file_datetime} {file_id}"
                 else:
                     file_name = f"{mycreator}"
-
                 # unlocked meda in messages
                 try:
                     if(x['access'] == True):
@@ -509,7 +508,6 @@ while True:
                 file_name = f"{file_datetime} {file_id}"
             else:
                 file_name = f"{mycreator}"
-
             # unlocked media
             try:
                 if(x['access'] == True):
