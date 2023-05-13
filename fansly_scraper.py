@@ -326,6 +326,7 @@ def sort_download(filename,filebytes, directoryName):
     global pic_count, vid_count, duplicates, recent
     win_comp_name=str(re.sub(r'[\\/:*?"<>|]', '', repr(filename).replace("'",''))).replace('..','.')
     randints=''.join(choices(digits, k=3))
+    if show == 'True':output(1,' Info','<light-blue>', f"Downloading Image '{win_comp_name}' file size '{filebytes.size}'")
     if re.findall(r'.jpeg|.png|.jpg|.tif|.tiff|.bmp', filename[-6:]):
         photohash=str(imagehash.average_hash(Image.open(io.BytesIO(filebytes))))
         if photohash not in recent_photobyte_hashes:
@@ -409,11 +410,7 @@ if group_id:
                     file_name = f"{file_datetime} {file_id}"
                 else:
                     file_name = f"{mycreator}"
-                # message media previews
-                if previews == 'True':
-                    try:
-                        sort_download(f"{file_name} preview.{x['preview']['mimetype'].split('/')[1]}", sess.get(x['preview']['locations'][0]['location'], headers=headers).content, preview_directory_name)
-                    except:pass
+
                 # unlocked meda in messages
                 try:
                     if(x['access'] == True):
@@ -429,6 +426,11 @@ if group_id:
                         except:pass # silently passing locked media in messages
                     pass
                 except:pass
+                # message media previews
+                if previews == 'True':
+                    try:
+                        sort_download(f"{file_name} preview.{x['preview']['mimetype'].split('/')[1]}", sess.get(x['preview']['locations'][0]['location'], headers=headers).content, preview_directory_name)
+                    except:pass
             # get next cursor
             try:
                 msg_cursor = resp['response']['messages'][-1]['id']
@@ -441,7 +443,8 @@ if group_id:
         except KeyError:
             output(3,' WARNING','<yellow>', 'No scrapeable media found in messages')
             pass
-else:output(1,' Info','<light-blue>','No scrapeable media found in messages')
+else:
+    output(1,' Info','<light-blue>','No scrapeable media found in messages')
 
 output(1,' INFO','<light-blue>', f'Downloaded Pictures from messages: {str(pic_count-1)}')
     #issue = True
@@ -506,11 +509,7 @@ while True:
                 file_name = f"{file_datetime} {file_id}"
             else:
                 file_name = f"{mycreator}"
-            # previews
-            if previews == 'True':
-                try:
-                    sort_download(f"{file_name} preview.{x['preview']['mimetype'].split('/')[1]}", sess.get(x['preview']['locations'][0]['location'], headers=headers).content, preview_directory_name)
-                except:pass
+
             # unlocked media
             try:
                 if(x['access'] == True):
@@ -526,6 +525,11 @@ while True:
                     except:pass # silently passing locked media
                 pass
             except:pass
+            # previews
+            if previews == 'True':
+                try:
+                    sort_download(f"{file_name} preview.{x['preview']['mimetype'].split('/')[1]}", sess.get(x['preview']['locations'][0]['location'], headers=headers).content, preview_directory_name)
+                except:pass
         # get next cursor
         try:
             cursor = response.json()['response']['posts'][-1]['id']
